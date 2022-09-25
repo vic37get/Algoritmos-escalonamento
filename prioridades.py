@@ -1,24 +1,18 @@
-import sys
+import copy
 
-import numpy as np
 import pandas as pd
 
-arquivo = sys.stdin
-try:
-    dados = arquivo.readlines()
-except:
-    print('Arquivo não encontrado!')
-    exit(0)
 
-def TratamentoArquivo(arquivo, prioridadeInicial):
+def TratamentoArquivoPrio(arquivo, prioridadeInicial):
+    dados = copy.deepcopy(arquivo)
     for linha in range(len(arquivo)):
-        arquivo[linha] = arquivo[linha].replace('\n','').split()
-        arquivo[linha].append(prioridadeInicial)
-        arquivo[linha].append(0)
-        arquivo[linha].append(0)
-    dados = pd.DataFrame(arquivo, columns=['instanteChegada', 'duracaoProcesso', 'prioridade','executado', 'status'])
-    dados = dados.astype(int)
-    return dados
+        dados[linha] = dados[linha].replace('\n','').split()
+        dados[linha].append(prioridadeInicial)
+        dados[linha].append(0)
+        dados[linha].append(0)
+    df = pd.DataFrame(dados, columns=['instanteChegada', 'duracaoProcesso', 'prioridade','executado', 'status'])
+    df = df.astype(int)
+    return df
 
 def MaiorPrioridade(dados):
     return max(dados['prioridade'])
@@ -47,8 +41,8 @@ def PrioridadesDinamicas(dados, prioridadeInicial):
     chegadaProcesso, executadoProcesso = [], []
     #Espera Médio
     tempoEspera = 0
-
-    processos = TratamentoArquivo(dados, prioridadeInicial)
+    #Processos
+    processos = TratamentoArquivoPrio(dados, prioridadeInicial)
     duracao_total = sum(processos['duracaoProcesso'])
     instante = 0
     while(instante < duracao_total):
@@ -91,7 +85,4 @@ def PrioridadesDinamicas(dados, prioridadeInicial):
     resposta_md = RespostaMedia(chegadaProcesso, executadoProcesso)
     espera_md = EsperaMedio(tempoEspera, len(processos))
 
-    return retorno_md, resposta_md, espera_md 
-
-retornoMedio, respostaMedia, esperaMedia = PrioridadesDinamicas(dados, 5)
-print('PRI %.2f %.2f %.2f' %(retornoMedio, respostaMedia, esperaMedia))
+    return retorno_md, resposta_md, espera_md
