@@ -14,9 +14,10 @@ def TratamentoArquivo(arquivo):
     for linha in range(len(arquivo)):
         arquivo[linha] = arquivo[linha].replace('\n','').split()
         arquivo[linha].append(linha)
+        arquivo[linha].append(linha+1)
         arquivo[linha].append(0)
         arquivo[linha].append(0)
-    dados = pd.DataFrame(arquivo, columns=['instanteChegada', 'duracaoProcesso', 'numProcesso','executado', 'status'])
+    dados = pd.DataFrame(arquivo, columns=['chegada', 'duracao', 'PID', 'posicao', 'executado', 'status'])
     dados = dados.astype(int)
     return dados
 
@@ -37,7 +38,6 @@ def RespostaMedia(chegadaProcesso, executadoProcesso):
 def EsperaMedio(tempoEspera, processos):
     return tempoEspera/processos
 
-
 def roundRobin(dados):
     #Retorno médio
     instanteTermino, instanteChegada = [], []
@@ -47,52 +47,61 @@ def roundRobin(dados):
     tempoEspera = 0
     instante = 0
     processos = TratamentoArquivo(dados)
-    duracao_total = sum(processos['duracaoProcesso'])
+    duracao_total = sum(processos['duracao'])
     print(duracao_total)
     while instante < duracao_total:
-        processos_candidatos = processos[(processos['instanteChegada'] <= instante) & (processos['status'] != 1)]
+        processos = processos.sort_values(by=['posicao'])
+        processos_candidatos = processos[(processos['chegada'] <= instante) & (processos['status'] != 1)]
         print('Instante', instante)
         print('Processos:\n',processos)
         print('Processos candidatos:\n', processos_candidatos)
+        
         if len(processos_candidatos) > 0:
             processo = processos_candidatos.iloc[0]
-            print('Processo escolhido: \n', processos[processos['numProcesso'] == processo['numProcesso']])
-            duracao = processo['duracaoProcesso']
-            chegada = processo['instanteChegada']
-            numProcesso = processo['numProcesso']
+            print('Processo escolhido: \n', processos[processos['PID'] == processo['PID']])
+            duracao = processo['duracao']
+            chegada = processo['chegada']
+            PID = processo['PID']
             executado = processo['executado']
             print('Duracao: ', duracao)
+        
 
             if executado != 1:
                 chegadaProcesso.append(chegada)
                 executadoProcesso.append(instante)
-                processos.loc[processos.numProcesso == numProcesso, 'executado'] = 1
+                processos.loc[processos.PID == PID, 'executado'] = 1
 
             #Se a duração do processo ainda for maior ou igual a um quantum:
             if duracao - 2 >= 0:
                 duracao-=2
-                processos.loc[processos.numProcesso == numProcesso, 'duracaoProcesso'] = duracao
-                print('Processo após executar:\n', processos[processos['numProcesso'] == processo['numProcesso']])
-                print(processos)
+                processos.loc[processos.PID == PID, 'duracao'] = duracao
+                print('Processo após executar:\n', processos[processos['PID'] == processo['PID']])
+                tempoEspera+=(((len(processos_candidatos))-1)*2)
                 instante+=2
             #Se a duração for igual a 1:
             else:
                 duracao-=1
-                processos.loc[processos.numProcesso == numProcesso, 'duracaoProcesso'] = duracao
-                print('Processo após executar:\n', processos[processos['numProcesso'] == processo['numProcesso']])
-                print(processos)
+                processos.loc[processos.PID == PID, 'duracao'] = duracao
+                print('Processo após executar:\n', processos[processos['PID'] == processo['PID']])
+                tempoEspera+=((len(processos_candidatos))-1)
                 instante+=1
-            tempoEspera+=((len(processos_candidatos) - 1))
+                
+
             if duracao == 0:
-                processos.loc[processos.numProcesso == numProcesso, 'status'] = 1
+                processos.loc[processos.PID == PID, 'status'] = 1
                 instanteChegada.append(chegada)
                 instanteTermino.append(instante)
+            
+            else:
+                ultimoDaFila = processos['posicao'].max()
+                processos.loc[processos.PID == PID, 'posicao'] = ultimoDaFila + 1
         
         else:
             print(processos_candidatos)
             print('Processador ocioso')
             instante+=2
-
+    
+    print('Tempo de espera: ',tempoEspera)
     print(instanteChegada, len(instanteChegada))
     print(instanteTermino, len(instanteTermino))
     retorno_md = RetornoMedio(instanteChegada, instanteTermino)
@@ -101,6 +110,5 @@ def roundRobin(dados):
 
     return retorno_md, resposta_md, espera_md 
 
-                
 retornoMedio, respostaMedia, esperaMedia = roundRobin(dados)
 print('RR %.2f %.2f %.2f' %(retornoMedio, respostaMedia, esperaMedia))
