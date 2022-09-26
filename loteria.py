@@ -4,16 +4,23 @@ import random
 import pandas as pd
 
 
-def TratamentoArquivo(arquivo):
+def TratamentoArquivoLot(arquivo):
     dados = copy.deepcopy(arquivo)
-    for linha in range(len(dados)):
+    for linha in range(len(arquivo)):
         dados[linha] = dados[linha].replace('\n','').split()
+        dados[linha] = dados[linha] + list(dados[linha][-1])
         dados[linha].append(linha)
         dados[linha].append(0)
         dados[linha].append(0)
-    df = pd.DataFrame(dados, columns=['instanteChegada', 'duracaoProcesso', 'numProcesso','executado', 'status'])
+    df = pd.DataFrame(dados, columns=['chegada', 'duracao', 'duracaoInicial', 'PID', 'executado', 'status'])
     df = df.astype(int)
     return df
+
+#Escolhe um processo de forma aleatória a partir do seu PID
+def EscolheProcesso(processos_candidatos):
+    PID_PROCESSO = random.choice(processos_candidatos['PID'].values.tolist())
+    processo = processos_candidatos.loc[PID_PROCESSO]
+    return processo
 
 #Termino do processo - Chegada do processo
 def RetornoMedio(instanteChegada, instanteTermino):
@@ -32,50 +39,69 @@ def RespostaMedia(chegadaProcesso, executadoProcesso):
     return sum(tempoResposta)/len(tempoResposta)
 
 #Soma dos períodos em que o processo estava no estado pronto.
-def EsperaMedio(tempoEspera, processos):
-    return tempoEspera/processos
+def EsperaMedio(instanteChegada, instanteTermino, duracaoTotal, qtd_processos):
+    tempo_medio = []
+    for processo in range(qtd_processos):
+        tempo_medio.append(instanteTermino[processo] - instanteChegada[processo] - duracaoTotal[processo])
+    return sum(tempo_medio)/qtd_processos
 
 def Loteria(dados):
-    #Retorno médio
-    instanteTermino, instanteChegada = [], []
+    #Retorno médio #Espera Médio
+    instanteTermino, instanteChegada, duracaoProcesso = [], [], []
     #Resposta média
     chegadaProcesso, executadoProcesso = [], []
-    #Espera Médio
-    tempoEspera = 0
-
-    processos = TratamentoArquivo(dados)
-    duracao_total = sum(processos['duracaoProcesso'])
+    #Instante atual
     instante = 0
-    while(instante < duracao_total):
-        processos_candidatos = processos[(processos['instanteChegada'] <= instante) & (processos['status'] != 1)]
+    #Processos
+    processos = TratamentoArquivoLot(dados)
+    duracao_total = sum(processos['duracao'])
+    #Enquanto o instante atual não for maior ou igual a duração total dos processos.
+    while duracao_total !=0:
+        #Processos candidatos à execução
+        processos_candidatos = processos[(processos['chegada'] <= instante) & (processos['status'] != 1)]
+        print('\nInstante: {}'.format(instante))
+        print('\nProcessos:\n {}\n'.format(processos))
         print('Processos candidatos:\n', processos_candidatos)
+        #Se há pelo menos um processo no estado pronto.
         if len(processos_candidatos) > 0:
-            processo = random.choice(processos_candidatos['numProcesso'].values.tolist())
-            print('Processo escolhido:\n', processo)
-            executado = processos['executado'][processo]
-            chegada = processos['instanteChegada'][processo]
-            duracao = processos['duracaoProcesso'][processo]
+            processo = EscolheProcesso(processos_candidatos)
+            print('\nProcesso escolhido: \n', processos[processos['PID'] == processo['PID']])
+            duracao = processo['duracao']
+            chegada = processo['chegada']
+            PID = processo['PID']
+            executado = processo['executado']
 
+            #Se o processo está sendo executado pela primeira vez
             if executado != 1:
                 chegadaProcesso.append(chegada)
                 executadoProcesso.append(instante)
-                processos.loc[processo, 'executado'] = 1
+                processos.loc[processos.PID == PID, 'executado'] = 1
 
-            processos.loc[processo, 'duracaoProcesso'] = duracao - 1
-            print('Processo após executar:\n', processos.iloc[processo])
-            if processos['duracaoProcesso'][processo] == 0:
-                processos.loc[processo, 'status'] = 1
-                instanteChegada.append(chegada)
-                instanteTermino.append((instante+1))
+            #O processo vai executar
+            duracao -=1 
+            processos.loc[processos.PID == PID, 'duracao'] = duracao
+            #Duração total da execução de todos os processos
+            duracao_total -=1
+            #Instante de execução
+            instante+=1
             
-            instante+=1
-            tempoEspera+=((len(processos_candidatos) - 1))
+            #Se o processo chegar ao seu fim.
+            if duracao == 0:
+                #Status finalizado
+                processos.loc[processos.PID == PID, 'status'] = 1
+                instanteChegada.append(chegada)
+                instanteTermino.append(instante)
+                duracaoProcesso.append(processo['duracaoInicial'])
+            print('\nProcesso após executar:\n', processos[processos['PID'] == processo['PID']])
+        
         else:
-            print('Processador ocioso')
+            print(processos_candidatos)
+            print('\n--O processador está ocioso!--\n')
             instante+=1
-
+        print('\n*******************************************************************************')
+            
     retorno_md = RetornoMedio(instanteChegada, instanteTermino)
     resposta_md = RespostaMedia(chegadaProcesso, executadoProcesso)
-    espera_md = EsperaMedio(tempoEspera, len(processos))
+    espera_md = EsperaMedio(instanteChegada, instanteTermino, duracaoProcesso, len(processos))
 
-    return retorno_md, resposta_md, espera_md 
+    return retorno_md, resposta_md, espera_md
