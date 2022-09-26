@@ -55,19 +55,18 @@ def roundRobin(dados):
         processos = processos.sort_values(by=['posicao'])
         #Processos candidatos à execução
         processos_candidatos = processos[(processos['chegada'] <= instante) & (processos['status'] != 1)]
-        print('Instante', instante)
-        print('Processos:\n',processos)
+        print('\nInstante: {}'.format(instante))
+        print('\nProcessos:\n {}\n'.format(processos))
         print('Processos candidatos:\n', processos_candidatos)
         #Se há pelo menos um processo no estado pronto.
         if len(processos_candidatos) > 0:
             #Obtem o primeiro processo da fila
             processo = processos_candidatos.iloc[0]
-            print('Processo escolhido: \n', processos[processos['PID'] == processo['PID']])
+            print('\nProcesso escolhido: \n', processos[processos['PID'] == processo['PID']])
             duracao = processo['duracao']
             chegada = processo['chegada']
             PID = processo['PID']
             executado = processo['executado']
-            print('Duracao: ', duracao)
             #Se o processo está sendo executado pela primeira vez
             if executado != 1:
                 chegadaProcesso.append(chegada)
@@ -77,14 +76,14 @@ def roundRobin(dados):
             if duracao - 2 >= 0:
                 duracao-=2
                 processos.loc[processos.PID == PID, 'duracao'] = duracao
-                print('Processo após executar:\n', processos[processos['PID'] == processo['PID']])
+                print('\nProcesso após executar:\n', processos[processos['PID'] == processo['PID']])
                 duracao_total-=2
                 instante+=2
             #Se a duração for igual a 1:
             else:
                 duracao-=1
                 processos.loc[processos.PID == PID, 'duracao'] = duracao
-                print('Processo após executar:\n', processos[processos['PID'] == processo['PID']])
+                print('\nProcesso após executar:\n', processos[processos['PID'] == processo['PID']])
                 duracao_total-=1
                 instante+=1
             #Se o processo já finalizou sua execução.
@@ -102,8 +101,9 @@ def roundRobin(dados):
         #Se não há processos no estado pronto.
         else:
             print(processos_candidatos)
-            print('O processador está ocioso')
+            print('\n--O processador está ocioso!--\n')
             instante+=1
+        print('\n*******************************************************************************')
 
     retorno_md = RetornoMedio(instanteChegada, instanteTermino)
     resposta_md = RespostaMedia(chegadaProcesso, executadoProcesso)
