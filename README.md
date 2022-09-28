@@ -1,5 +1,5 @@
 # Execução
-`python3 [nomeDoArquivo].py < entrada.txt`
+`python3 main.py < entrada.txt`
 
 ## Funcionamento
 * Tempo de retorno médio – Refere-se ao tempo transcorrido entre o momento da entrada do processo no sistema e o seu término.
