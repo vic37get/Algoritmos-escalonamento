@@ -6,6 +6,7 @@ import pandas as pd
 
 def TratamentoArquivoPrio(arquivo, prioridadeInicial):
     dados = copy.deepcopy(arquivo)
+    dados.sort(key = lambda dados: dados[0])
     for linha in range(len(arquivo)):
         dados[linha] = dados[linha].replace('\n','').split()
         dados[linha] = dados[linha] + list(dados[linha][-1])
@@ -61,6 +62,70 @@ def PrioridadesDinamicas(dados, prioridadeInicial):
         processos = processos.sort_values(by=['posicao'])
         #Processos candidatos à execução
         processos_candidatos = processos[(processos['chegada'] <= instante) & (processos['status'] != 1)]
+        #Se há pelo menos um processo no estado pronto.
+        if len(processos_candidatos) > 0:
+            processo = MaiorPrioridade(processos_candidatos)
+            duracao = processo['duracao']
+            prioridade = processo['prioridade']
+            chegada = processo['chegada']
+            PID = processo['PID']
+            executado = processo['executado']
+            #Se o processo está sendo executado pela primeira vez
+            if executado != 1:
+                chegadaProcesso.append(chegada)
+                executadoProcesso.append(instante)
+                processos.loc[processos.PID == PID, 'executado'] = 1
+            #O processo vai executar
+            duracao -=1 
+            prioridade -=1
+            processos.loc[processos.PID == PID, 'duracao'] = duracao
+            processos.loc[processos.PID == PID, 'prioridade'] = prioridade
+            #Duração total da execução de todos os processos
+            duracao_total -=1
+            #Instante de execução
+            instante+=1
+            #Se o processo chegar ao seu fim.
+            if duracao == 0:
+                #Status finalizado
+                processos.loc[processos.PID == PID, 'status'] = 1
+                instanteChegada.append(chegada)
+                instanteTermino.append(instante)
+                duracaoProcesso.append(processo['duracaoInicial']) 
+            #Aumentando a prioridade dos processos que ficaram no estado pronto
+            for pro in processos_candidatos.index:
+                if processos_candidatos['PID'][pro] != PID:
+                    PID_PROCESSO = processos_candidatos['PID'][pro]
+                    processos.loc[processos.PID == PID_PROCESSO, 'prioridade']+=1
+        else:
+            instante+=1
+            
+    retorno_md = RetornoMedio(instanteChegada, instanteTermino)
+    resposta_md = RespostaMedia(chegadaProcesso, executadoProcesso)
+    espera_md = EsperaMedio(instanteChegada, instanteTermino, duracaoProcesso, len(processos))
+
+    return retorno_md, resposta_md, espera_md
+
+
+############
+#Passo a passo
+
+def PrioridadesDinamicasPassoApasso(dados, prioridadeInicial):
+    print('\n--Algoritmo Prioridades Dinâmicas--\n')
+    #Retorno médio #Espera Médio
+    instanteTermino, instanteChegada, duracaoProcesso = [], [], []
+    #Resposta média
+    chegadaProcesso, executadoProcesso = [], []
+    #Instante atual
+    instante = 0
+    #Processos
+    processos = TratamentoArquivoPrio(dados, prioridadeInicial)
+    duracao_total = sum(processos['duracao'])
+    #Enquanto o instante atual não for maior ou igual a duração total dos processos.
+    while duracao_total !=0:
+        #Ordenando a fila de processos pela posição de chegada do processo na fila.
+        processos = processos.sort_values(by=['posicao'])
+        #Processos candidatos à execução
+        processos_candidatos = processos[(processos['chegada'] <= instante) & (processos['status'] != 1)]
         print('\nInstante: {}'.format(instante))
         print('\nProcessos:\n {}\n'.format(processos))
         print('Processos candidatos:\n', processos_candidatos)
@@ -78,7 +143,6 @@ def PrioridadesDinamicas(dados, prioridadeInicial):
                 chegadaProcesso.append(chegada)
                 executadoProcesso.append(instante)
                 processos.loc[processos.PID == PID, 'executado'] = 1
-
             #O processo vai executar
             duracao -=1 
             prioridade -=1
@@ -88,7 +152,6 @@ def PrioridadesDinamicas(dados, prioridadeInicial):
             duracao_total -=1
             #Instante de execução
             instante+=1
-            
             #Se o processo chegar ao seu fim.
             if duracao == 0:
                 #Status finalizado
@@ -97,7 +160,6 @@ def PrioridadesDinamicas(dados, prioridadeInicial):
                 instanteTermino.append(instante)
                 duracaoProcesso.append(processo['duracaoInicial'])
             print('\nProcesso após executar:\n', processos[processos['PID'] == processo['PID']])
-            
             #Aumentando a prioridade dos processos que ficaram no estado pronto
             for pro in processos_candidatos.index:
                 if processos_candidatos['PID'][pro] != PID:
